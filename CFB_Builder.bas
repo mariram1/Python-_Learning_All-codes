@@ -5,7 +5,8 @@ Option Explicit
 ' Author    : Janakiraman Murugesan
 ' Purpose   : Generate feedback forms from input workbook data
 ' Version History:
-'   1.0.0 - 08-March-2025 - Initial version created
+'   1.0.1 - 12-March-2025 - Initial version created
+' Added Button - Added requested date column value from Input data sheet - fiscal Quarter Function added
 '---------------------------------------------------------------------------------------
 Sub CFBFormBuilder()
     On Error GoTo ErrorHandler
@@ -22,7 +23,7 @@ Sub CFBFormBuilder()
     
     ' Initialize variables
     fieldValues = Array("Sr. No", "SOW No", "SOW Description", "Cyient-Team Member's Name", _
-                       "Cyient Team Lead Name", "WEC Manager Details")
+                       "Cyient Team Lead Name", "WEC Manager Details", "Requested date")
     
     ' Performance optimizations
     Application.ScreenUpdating = False
@@ -62,11 +63,11 @@ Sub CFBFormBuilder()
     Dim colTeamMem As Long: colTeamMem = GetColumnIndex("Cyient-Team Member's Name", ws)
     Dim colTeamLead As Long: colTeamLead = GetColumnIndex("Cyient Team Lead Name", ws)
     Dim colSrNo As Long: colSrNo = GetColumnIndex("Sr. No", ws)
-    
+    Dim colrDate As Long: colrDate = GetColumnIndex("Requested date", ws)
     ' Create single template copy
     ThisWorkbook.Sheets(Array("Covering letter", "Feedback Form")).Copy
     Set templateWb = ActiveWorkbook
-    requestedDate = Format(Now, "MM-DD-YYYY")
+    'requestedDate = Format(Now, "MM-DD-YYYY")
     
     ' Process all records using array
     For i = 1 To UBound(dataArray, 1)
@@ -76,12 +77,12 @@ Sub CFBFormBuilder()
             .Cells(6, 4).Value = dataArray(i, colSowDesc)
             .Cells(7, 4).Value = dataArray(i, colTeamMem)
             .Cells(6, 17).Value = dataArray(i, colTeamLead)
-            .Cells(8, 17).Value = requestedDate
+            .Cells(8, 17).Value = dataArray(i, colrDate)
         End With
         
         ' Save with unique filename
         Dim outFilename As String
-        outFilename = dataArray(i, colSrNo) & "_" & dataArray(i, colSowNo) & ".xlsx"
+        outFilename = dataArray(i, colSrNo) & "_" & "SOW-" & dataArray(i, colSowNo) & GetFiscalInfo(dataArray(i, colrDate)) & "_CFB.xlsx"
         templateWb.SaveAs folderPath & "\" & outFilename, FileFormat:=xlOpenXMLWorkbook
     Next i
     MsgBox "Files are Generated in : " & vbCrLf & folderPath
@@ -161,4 +162,30 @@ Function GetColumnIndex(searchValue As String, Optional ws As Worksheet) As Long
         End If
     Next i
     GetColumnIndex = -1
+End Function
+Function GetFiscalInfo(inputDate) As String
+  ' Q1: Apr-Jun, Q2: Jul-Sep, Q3: Oct-Dec, Q4: Jan-Mar
+  Dim monthNum As Integer
+  Dim fiscalYear As Integer
+  Dim fiscalMonth As Integer
+  Dim quarterNum As Integer
+  Dim fiscalStartMonth As Integer: fiscalStartMonth = 4
+  
+  monthNum = Month(inputDate)
+  fiscalYear = Year(inputDate)
+  fiscalMonth = monthNum - 3
+  
+  If fiscalMonth <= 0 Then
+    fiscalMonth = fiscalMonth + 12
+    fiscalYear = fiscalYear - 1
+  End If
+  quarterNum = Application.WorksheetFunction.Ceiling(fiscalMonth / 3, 1)
+  
+  Dim yearstart As String
+  Dim yearEnd As String
+  
+  yearstart = Right(CStr(fiscalYear), 2)
+  yearEnd = Right(CStr(fiscalYear + 1), 2)
+  
+  GetFiscalInfo = "_FY" & yearstart & "-" & yearEnd & "_Q" & quarterNum
 End Function
